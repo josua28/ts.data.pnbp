@@ -1,0 +1,100 @@
+install.packages("forecast")
+install.packages("tidyverse")
+install.packages("lubridate")
+install.packages("dplyr")
+install.packages("tseries")
+install.packages("ggplot2")
+install.packages("lmtest")
+
+library("forecast")
+library("tidyverse")
+library("lubridate")
+library("dplyr")
+library("tseries")
+library("ggplot2")
+libray("lmtest")
+
+#transform character data to time series
+train_case2$Periode <- as.Date(train_case2$Periode, tryFormats = c("%Y-%m-%d", "%d/%m/%Y"),
++ optional = FALSE)
+
+#remove weekends 
+new.train <- train_case2 %>%
++     select(Periode, pnbp_minyak_bumi, pnbp_layanan_sim) %>%
++     mutate(weekday = wday(Periode, label=TRUE)) %>%
++     filter(!wday(Periode) %in% c(1, 7))
+
+glimpse(train_case2)
+
+#Create time series data
+y <- ts(new.train$pnbp_minyak_bumi, start = c(2016, 1), frequency = 261)
+ggtsdisplay(y)
+x <- ts(new.train$pnbp_layanan_sim, start = c(2016, 1), frequency = 261)
+ggtsdisplay(x)
+
+#y prime
+
+y.diff <- diff(y, lag = 261, differences = 1)
+ggtsdisplay(y.diff)
+
+#y double prime
+
+y.diff2 <- diff(y.diff, lag = 261, differences = 1)
+ggtsdisplay(y.diff2)
+
+x <- ts(new.train$pnbp_layanan_sim, start = c(2016, 1), frequency = 261)
+ggtsdisplay(x)
+
+#x prime
+
+x.diff <- diff(y, lag = 261, differences = 1)
+ggtsdisplay(y.diff)
+
+#x double prime
+
+x.diff2 <- diff(y.diff, lag = 261, differences = 1)
+ggtsdisplay(y.diff2)
+
+
+#model 
+
+fit1 <- Arima(y, order = c(0,1,0), seasonal = c(1,1,0), lambda = NULL, include.constant = TRUE)
+autoplot(fit1)
+coeftest(fit1)
+checkresiduals(fit1)
+
+fit2 <- Arima(y, order = c(0,1,1), seasonal = c(0,1,1), lambda = NULL, include.constant = TRUE)
+autoplot(fit2)
+coeftest(fit2)
+checkresiduals(fit2)
+
+fit3 <- fit2 <- Arima(y, order = c(0,0,0), seasonal = c(0,1,1), lambda = NULL, include.constant = TRUE)
+autoplot(fit3)
+coeftest(fit3)
+checkresiduals(fit3)
+
+fit.x <- Arima(y, order = c(0,1,0), seasonal = c(1,1,0), lambda = NULL, include.constant = TRUE)
+autoplot(fit.x)
+coeftest(fit.x)
+checkresiduals(fit.x)
+
+fit.x2 <- Arima(y, order = c(0,1,1), seasonal = c(0,1,1), lambda = NULL, include.constant = TRUE)
+autoplot(fit.x2)
+coeftest(fit.x2)
+checkresiduals(fit.x2)
+
+fit.x3 <- fit2 <- Arima(y, order = c(0,0,0), seasonal = c(0,1,1), lambda = NULL, include.constant = TRUE)
+autoplot(fit.x3)
+coeftest(fit.x3)
+checkresiduals(fit.x3)
+
+
+#or use this code instead to find the best model
+auto.arima(y, trace = TRUE)
+auto.arima(x, trace = TRUE)
+
+#Plot
+pnbp.forecast <- cbind(y, x)
+fit.plot <- tslm(pnbp.forecast ~ trend + season)
+fcast <- forecast(fit.plot, h=30)
+autoplot(fcast)
